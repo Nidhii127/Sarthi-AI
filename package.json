@@ -1,0 +1,35 @@
+{
+  "name": "sarthi-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test-brain": "tsx scripts/test-brain.ts",
+    "seed-attributes": "tsx scripts/seed-attribute-schema.ts",
+    "seed-seo-corpus": "tsx scripts/seed-seo-corpus.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.10.0",
+    "@pinecone-database/pinecone": "^8.0.0",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.50.0",
+    "dotenv": "^17.4.2",
+    "langfuse": "^3.38.20",
+    "lucide-react": "^0.525.0",
+    "next": "16.2.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "tsx": "^4.22.4",
+    "typescript": "^5"
+  }
+}
