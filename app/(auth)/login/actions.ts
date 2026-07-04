@@ -38,7 +38,7 @@ export async function sendOtpAction(
       email,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: "http://localhost:3000/auth/callback",
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
         data: { full_name: name.trim() },
       },
     });
