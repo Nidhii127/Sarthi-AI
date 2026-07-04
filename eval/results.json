@@ -1,0 +1,385 @@
+{
+  "run_at": "2026-07-04T08:34:18.389Z",
+  "overall_accuracy": 100,
+  "total_fields_checked": 29,
+  "total_fields_passed": 29,
+  "per_field_accuracy": {
+    "category": {
+      "pass": 6,
+      "total": 6,
+      "pct": "100%"
+    },
+    "attributes.color": {
+      "pass": 6,
+      "total": 6,
+      "pct": "100%"
+    },
+    "attributes.pattern": {
+      "pass": 1,
+      "total": 1,
+      "pct": "100%"
+    },
+    "attributes.fabric": {
+      "pass": 4,
+      "total": 4,
+      "pct": "100%"
+    },
+    "source_log.color": {
+      "pass": 4,
+      "total": 4,
+      "pct": "100%"
+    },
+    "source_log.fabric": {
+      "pass": 2,
+      "total": 2,
+      "pct": "100%"
+    },
+    "confidence_flags.fabric.confidence": {
+      "pass": 1,
+      "total": 1,
+      "pct": "100%"
+    },
+    "pricing_inputs.seller_price": {
+      "pass": 4,
+      "total": 4,
+      "pct": "100%"
+    },
+    "attributes.occasion": {
+      "pass": 1,
+      "total": 1,
+      "pct": "100%"
+    }
+  },
+  "per_language_accuracy": {
+    "english": {
+      "pass": 25,
+      "total": 25,
+      "pct": "100%"
+    },
+    "hinglish": {
+      "pass": 4,
+      "total": 4,
+      "pct": "100%"
+    }
+  },
+  "conflict_detection_accuracy": {
+    "pass": 1,
+    "total": 1,
+    "pct": "100%"
+  },
+  "hard_cap_violations": [],
+  "per_test_summary": [
+    {
+      "id": "TC01",
+      "pass": true,
+      "fields_pass": 8,
+      "fields_total": 8
+    },
+    {
+      "id": "TC02",
+      "pass": true,
+      "fields_pass": 4,
+      "fields_total": 4
+    },
+    {
+      "id": "TC03",
+      "pass": true,
+      "fields_pass": 6,
+      "fields_total": 6
+    },
+    {
+      "id": "TC04",
+      "pass": true,
+      "fields_pass": 4,
+      "fields_total": 4
+    },
+    {
+      "id": "TC05",
+      "pass": true,
+      "fields_pass": 4,
+      "fields_total": 4
+    },
+    {
+      "id": "TC06",
+      "pass": true,
+      "fields_pass": 3,
+      "fields_total": 3
+    },
+    {
+      "id": "TC07",
+      "pass": false,
+      "fields_pass": 0,
+      "fields_total": 0,
+      "error": "{\"error\":{\"code\":429,\"message\":\"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.1-flash-lite\\nPlease retry in 47.407678263s.\",\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.Help\",\"links\":[{\"description\":\"Learn more about Gemini API quotas\",\"url\":\"https://ai.google.dev/gemini-api/docs/rate-limits\"}]},{\"@type\":\"type.googleapis.com/google.rpc.QuotaFailure\",\"violations\":[{\"quotaMetric\":\"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\"quotaId\":\"GenerateRequestsPerMinutePerProjectPerModel-FreeTier\",\"quotaDimensions\":{\"location\":\"global\",\"model\":\"gemini-3.1-flash-lite\"},\"quotaValue\":\"15\"}]},{\"@type\":\"type.googleapis.com/google.rpc.RetryInfo\",\"retryDelay\":\"47s\"}]}}"
+    }
+  ],
+  "test_results": [
+    {
+      "id": "TC01",
+      "input_language": "english",
+      "pass": true,
+      "field_results": [
+        {
+          "field": "category",
+          "expected": "T-shirt",
+          "actual": "T-shirt",
+          "pass": true
+        },
+        {
+          "field": "attributes.color",
+          "expected": "yellow",
+          "actual": "yellow",
+          "pass": true
+        },
+        {
+          "field": "attributes.pattern",
+          "expected": "printed",
+          "actual": "printed",
+          "pass": true
+        },
+        {
+          "field": "attributes.fabric",
+          "expected": "cotton",
+          "actual": "cotton",
+          "pass": true
+        },
+        {
+          "field": "source_log.color",
+          "expected": "image",
+          "actual": "image",
+          "pass": true
+        },
+        {
+          "field": "source_log.fabric",
+          "expected": "text",
+          "actual": "text",
+          "pass": true
+        },
+        {
+          "field": "confidence_flags.fabric.confidence",
+          "expected": "medium",
+          "actual": "medium",
+          "pass": true
+        },
+        {
+          "field": "pricing_inputs.seller_price",
+          "expected": null,
+          "actual": null,
+          "pass": true
+        }
+      ],
+      "hard_cap_violations": [],
+      "duration_ms": 11426,
+      "conflict_detection": {
+        "expected": false,
+        "detected": false,
+        "pass": true
+      }
+    },
+    {
+      "id": "TC02",
+      "input_language": "english",
+      "pass": true,
+      "field_results": [
+        {
+          "field": "category",
+          "expected": "T-shirt",
+          "actual": "T-shirt",
+          "pass": true
+        },
+        {
+          "field": "attributes.color",
+          "expected": "blue",
+          "actual": "blue",
+          "pass": true
+        },
+        {
+          "field": "attributes.fabric",
+          "expected": "cotton",
+          "actual": "cotton",
+          "pass": true
+        },
+        {
+          "field": "source_log.color",
+          "expected": "image",
+          "actual": "image",
+          "pass": true
+        }
+      ],
+      "hard_cap_violations": [],
+      "duration_ms": 9263,
+      "conflict_detection": {
+        "expected": true,
+        "detected": true,
+        "pass": true
+      }
+    },
+    {
+      "id": "TC03",
+      "input_language": "english",
+      "pass": true,
+      "field_results": [
+        {
+          "field": "category",
+          "expected": "Kurti / Kurta",
+          "actual": "Kurti / Kurta",
+          "pass": true
+        },
+        {
+          "field": "attributes.color",
+          "expected": "black",
+          "actual": "black",
+          "pass": true
+        },
+        {
+          "field": "attributes.fabric",
+          "expected": "rayon",
+          "actual": "rayon",
+          "pass": true
+        },
+        {
+          "field": "source_log.color",
+          "expected": "image",
+          "actual": "image",
+          "pass": true
+        },
+        {
+          "field": "source_log.fabric",
+          "expected": "text",
+          "actual": "text",
+          "pass": true
+        },
+        {
+          "field": "pricing_inputs.seller_price",
+          "expected": 450,
+          "actual": 450,
+          "pass": true
+        }
+      ],
+      "hard_cap_violations": [],
+      "duration_ms": 9419,
+      "conflict_detection": {
+        "expected": false,
+        "detected": false,
+        "pass": true
+      }
+    },
+    {
+      "id": "TC04",
+      "input_language": "hinglish",
+      "pass": true,
+      "field_results": [
+        {
+          "field": "category",
+          "expected": "Kurti / Kurta",
+          "actual": "Kurti / Kurta",
+          "pass": true
+        },
+        {
+          "field": "attributes.color",
+          "expected": "red",
+          "actual": "red",
+          "pass": true
+        },
+        {
+          "field": "attributes.fabric",
+          "expected": "cotton",
+          "actual": "cotton",
+          "pass": true
+        },
+        {
+          "field": "pricing_inputs.seller_price",
+          "expected": 500,
+          "actual": 500,
+          "pass": true
+        }
+      ],
+      "hard_cap_violations": [],
+      "duration_ms": 8788,
+      "conflict_detection": {
+        "expected": false,
+        "detected": false,
+        "pass": true
+      }
+    },
+    {
+      "id": "TC05",
+      "input_language": "english",
+      "pass": true,
+      "field_results": [
+        {
+          "field": "category",
+          "expected": "Saree",
+          "actual": "Saree",
+          "pass": true
+        },
+        {
+          "field": "attributes.color",
+          "expected": "cyan",
+          "actual": "cyan and gold",
+          "pass": true
+        },
+        {
+          "field": "attributes.occasion",
+          "expected": "festive",
+          "actual": "festive",
+          "pass": true
+        },
+        {
+          "field": "source_log.color",
+          "expected": "image",
+          "actual": "image",
+          "pass": true
+        }
+      ],
+      "hard_cap_violations": [],
+      "duration_ms": 9706,
+      "conflict_detection": {
+        "expected": false,
+        "detected": false,
+        "pass": true
+      }
+    },
+    {
+      "id": "TC06",
+      "input_language": "english",
+      "pass": true,
+      "field_results": [
+        {
+          "field": "category",
+          "expected": "Pant / Trouser",
+          "actual": "Pant / Trouser",
+          "pass": true
+        },
+        {
+          "field": "attributes.color",
+          "expected": "light blue",
+          "actual": "light blue",
+          "pass": true
+        },
+        {
+          "field": "pricing_inputs.seller_price",
+          "expected": 899,
+          "actual": 899,
+          "pass": true
+        }
+      ],
+      "hard_cap_violations": [],
+      "duration_ms": 9349,
+      "conflict_detection": {
+        "expected": false,
+        "detected": false,
+        "pass": true
+      }
+    },
+    {
+      "id": "TC07",
+      "input_language": "english",
+      "pass": false,
+      "field_results": [],
+      "hard_cap_violations": [],
+      "duration_ms": 5716,
+      "error": "{\"error\":{\"code\":429,\"message\":\"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.1-flash-lite\\nPlease retry in 47.407678263s.\",\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.Help\",\"links\":[{\"description\":\"Learn more about Gemini API quotas\",\"url\":\"https://ai.google.dev/gemini-api/docs/rate-limits\"}]},{\"@type\":\"type.googleapis.com/google.rpc.QuotaFailure\",\"violations\":[{\"quotaMetric\":\"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\"quotaId\":\"GenerateRequestsPerMinutePerProjectPerModel-FreeTier\",\"quotaDimensions\":{\"location\":\"global\",\"model\":\"gemini-3.1-flash-lite\"},\"quotaValue\":\"15\"}]},{\"@type\":\"type.googleapis.com/google.rpc.RetryInfo\",\"retryDelay\":\"47s\"}]}}"
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+[
+  {
+    "id": "TC01",
+    "image": "scripts/test-data/sample-shirt.webp",
+    "input": "yellow tshirt, oversized, cotton, size M L XL",
+    "input_language": "english",
+    "expected": {
+      "category": "T-shirt",
+      "attributes.color": "yellow",
+      "attributes.pattern": "printed",
+      "attributes.fabric": "cotton",
+      "source_log.color": "image",
+      "source_log.fabric": "text",
+      "confidence_flags.fabric.confidence": "medium",
+      "pricing_inputs.seller_price": null,
+      "conflict": false
+    }
+  },
+  {
+    "id": "TC02",
+    "image": "scripts/test-data/sample_blue_tshirt.jpg",
+    "input": "red cotton tshirt, size S M L",
+    "input_language": "english",
+    "expected": {
+      "category": "T-shirt",
+      "attributes.color": "blue",
+      "attributes.fabric": "cotton",
+      "source_log.color": "image",
+      "conflict": true,
+      "conflict_field": "color",
+      "conflict_image_wins": true
+    }
+  },
+  {
+    "id": "TC03",
+    "image": "scripts/test-data/black_short_kurti.jpg",
+    "input": "black kurti, rayon, size S M L XL, price 450",
+    "input_language": "english",
+    "expected": {
+      "category": "Kurti / Kurta",
+      "attributes.color": "black",
+      "attributes.fabric": "rayon",
+      "source_log.color": "image",
+      "source_log.fabric": "text",
+      "pricing_inputs.seller_price": 450,
+      "conflict": false
+    }
+  },
+  {
+    "id": "TC04",
+    "image": "scripts/test-data/redkurta.jpg",
+    "input": "lal rang ki kurti hai, cotton, size M L XL, 500 rupay",
+    "input_language": "hinglish",
+    "expected": {
+      "category": "Kurti / Kurta",
+      "attributes.color": "red",
+      "attributes.fabric": "cotton",
+      "pricing_inputs.seller_price": 500,
+      "conflict": false
+    }
+  },
+  {
+    "id": "TC05",
+    "image": "scripts/test-data/cyan_saree.jpg",
+    "input": "silk saree, cyan color, festive wear",
+    "input_language": "english",
+    "expected": {
+      "category": "Saree",
+      "attributes.color": "cyan",
+      "attributes.occasion": "festive",
+      "source_log.color": "image",
+      "conflict": false
+    }
+  },
+  {
+    "id": "TC06",
+    "image": "scripts/test-data/light_blue_ribbed_jeans.jpg",
+    "input": "blue ripped jeans, size 28 30 32, price 899",
+    "input_language": "english",
+    "expected": {
+      "category": "Pant / Trouser",
+      "attributes.color": "light blue",
+      "pricing_inputs.seller_price": 899,
+      "conflict": false
+    }
+  },
+  {
+    "id": "TC07",
+    "image": "scripts/test-data/WhatsApp_Image_2026-06-22_at_2_33_38_AM.jpeg",
+    "input": "brown maxi dress, cotton, printed, size S M L XL",
+    "input_language": "english",
+    "expected": {
+      "category": "Maxi Dress",
+      "attributes.color": "brown",
+      "attributes.pattern": "printed",
+      "attributes.fabric": "cotton",
+      "conflict": false
+    }
+  }
+]
