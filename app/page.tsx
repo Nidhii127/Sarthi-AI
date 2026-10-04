@@ -5,5 +5,5 @@ import { redirect } from "next/navigation";
  * Middleware handles unauthenticated redirect to /login before this runs.
  */
 export default function RootPage() {
-  redirect("/dashboard");
+  redirect("/dashboard/catalog");
 }

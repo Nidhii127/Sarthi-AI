@@ -1,23 +1,12 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase-browser";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import StatCard from "@/components/StatCard";
 import DataTable, { StatusBadge } from "@/components/DataTable";
-import { Store, PlusCircle, CheckCircle2, Clock, FileText } from "lucide-react";
+import { Store, Plus, CheckCircle2, Clock, FileText } from "lucide-react";
 
-// Mock catalog listings — used as fallback/seed if no real database entries exist per AGENTS.md §15
-const MOCK_LISTINGS = [
-  { id: "LST-028", product: "Indigo Cotton Kurti", category: "Kurti", createdOn: "26 Jun 2026", status: "Live" },
-  { id: "LST-027", product: "Women's Striped T-shirt", category: "T-shirt", createdOn: "25 Jun 2026", status: "Live" },
-  { id: "LST-026", product: "Black Slim Pant", category: "Pant", createdOn: "24 Jun 2026", status: "Live" },
-  { id: "LST-025", product: "Floral Maxi Dress", category: "Maxi Dress", createdOn: "23 Jun 2026", status: "Under Review" },
-  { id: "LST-024", product: "Men's Linen Shirt", category: "Shirt", createdOn: "22 Jun 2026", status: "Live" },
-  { id: "LST-023", product: "Premium Silk Saree", category: "Saree", createdOn: "21 Jun 2026", status: "Under Review" },
-  { id: "LST-022", product: "Designer Kurta (Men)", category: "Kurta", createdOn: "20 Jun 2026", status: "Draft" },
-  { id: "LST-021", product: "Leggings Set — Navy", category: "Leggings", createdOn: "19 Jun 2026", status: "Live" },
-];
+export const dynamic = "force-dynamic";
 
 type DisplayListing = {
   id: string;
@@ -44,176 +33,227 @@ function formatStatus(status: string): string {
   return status;
 }
 
-export default function CatalogPage() {
-  const router = useRouter();
-  const [listings, setListings] = useState<DisplayListing[]>([]);
-  const [loading, setLoading] = useState(true);
+export default async function CatalogPage() {
+  // 1. Get authenticated user's UID from verified Firebase session cookie
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("__session")?.value;
 
-  // Stats derived dynamically
-  const [stats, setStats] = useState({
-    total: 28,
-    live: 25,
-    underReview: 3,
-    drafts: 2,
-  });
+  if (!sessionCookie) {
+    redirect("/login");
+  }
 
-  useEffect(() => {
-    async function fetchListings() {
-      try {
-        const supabase = createClient();
-        
-        // 1. Get authenticated user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) {
-          console.warn("[CatalogPage] User not authenticated, falling back to mocks");
-          useFallback();
-          return;
-        }
+  let uid: string;
+  try {
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+    uid = decoded.uid;
+  } catch (err) {
+    console.warn("[CatalogPage] Invalid or expired session cookie, redirecting to /login:", err);
+    redirect("/login");
+  }
 
-        // 2. Query user listings from DB
-        const { data, error } = await supabase
-          .from("listings")
-          .select("*")
-          .eq("seller_id", user.id)
-          .order("created_at", { ascending: false });
+  // 2. Fetch user's listings from Firestore: /users/{uid}/listings
+  let listings: DisplayListing[] = [];
+  let fetchError: string | null = null;
+  let stats = {
+    total: 0,
+    live: 0,
+    underReview: 0,
+    drafts: 0,
+  };
 
-        if (error) {
-          console.error("[CatalogPage] DB fetch error, falling back to mocks:", error.message);
-          useFallback();
-          return;
-        }
+  try {
+    let snapshot;
+    try {
+      snapshot = await adminDb
+        .collection("users")
+        .doc(uid)
+        .collection("listings")
+        .orderBy("created_at", "desc")
+        .get();
+    } catch (orderErr) {
+      console.warn("[CatalogPage] orderBy query error, falling back to unordered fetch:", orderErr);
+      snapshot = await adminDb
+        .collection("users")
+        .doc(uid)
+        .collection("listings")
+        .get();
+    }
 
-        if (!data || data.length === 0) {
-          console.info("[CatalogPage] No real listings found in DB, seeding view with mock listings");
-          useFallback();
-          return;
-        }
+    const rawDocs = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Array<{
+      id: string;
+      title?: string;
+      category?: string;
+      status?: string;
+      created_at?: any;
+    }>;
 
-        // 3. Map database entries to DisplayListing format
-        const formatted: DisplayListing[] = data.map((item) => {
-          const createdOn = new Date(item.created_at).toLocaleDateString("en-GB", {
+    // Ensure documents are sorted newest first
+    rawDocs.sort((a, b) => {
+      const timeA = a.created_at?.toMillis?.() ?? (a.created_at ? new Date(a.created_at).getTime() : 0);
+      const timeB = b.created_at?.toMillis?.() ?? (b.created_at ? new Date(b.created_at).getTime() : 0);
+      return timeB - timeA;
+    });
+
+    listings = rawDocs.map((item) => {
+      let createdOn = "—";
+      if (item.created_at) {
+        const dateObj = typeof item.created_at.toDate === "function"
+          ? item.created_at.toDate()
+          : new Date(item.created_at);
+
+        if (!isNaN(dateObj.getTime())) {
+          createdOn = dateObj.toLocaleDateString("en-GB", {
             day: "numeric",
             month: "short",
             year: "numeric",
           });
-          
-          return {
-            id: `LST-${item.id.slice(0, 4).toUpperCase()}`,
-            product: item.title,
-            category: item.category,
-            createdOn,
-            status: formatStatus(item.status || "live"),
-          };
-        });
-
-        setListings(formatted);
-
-        // 4. Calculate dynamic stats from DB entries
-        const liveCount = data.filter((item) => item.status === "live" || item.status === "Live").length;
-        const reviewCount = data.filter((item) => item.status === "under_review" || item.status === "Under Review").length;
-        const draftCount = data.filter((item) => item.status === "draft" || item.status === "Draft").length;
-
-        setStats({
-          total: data.length,
-          live: liveCount,
-          underReview: reviewCount,
-          drafts: draftCount,
-        });
-
-      } catch (err) {
-        console.error("[CatalogPage] Unexpected error fetching listings:", err);
-        useFallback();
-      } finally {
-        setLoading(false);
+        }
       }
-    }
 
-    function useFallback() {
-      setListings(MOCK_LISTINGS);
-      setStats({
-        total: 28,
-        live: 25,
-        underReview: 3,
-        drafts: 2,
-      });
-    }
+      return {
+        id: item.id,
+        product: item.title || "Untitled Product",
+        category: item.category || "—",
+        createdOn,
+        status: formatStatus(item.status || "live"),
+        href: `/dashboard/catalog/${item.id}`,
+      };
+    });
 
-    fetchListings();
-  }, []);
+    const liveCount = rawDocs.filter((d) => (d.status ?? "").toLowerCase() === "live").length;
+    const reviewCount = rawDocs.filter(
+      (d) => (d.status ?? "").toLowerCase() === "under_review" || (d.status ?? "").toLowerCase() === "under review"
+    ).length;
+    const draftCount = rawDocs.filter((d) => (d.status ?? "").toLowerCase() === "draft").length;
+
+    stats = {
+      total: rawDocs.length,
+      live: liveCount,
+      underReview: reviewCount,
+      drafts: draftCount,
+    };
+  } catch (err: any) {
+    console.error("[CatalogPage] Error reading listings from Firestore:", err);
+    fetchError = err?.message || "Failed to load listings from Firestore";
+  }
 
   return (
     <div>
-      {/* Header with Add Product button */}
-      <div className="flex items-start justify-between mb-6">
+      {/* 1. Clean, Compact Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-7 sm:mb-8">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Catalog Uploads</h1>
-          <p className="text-slate-500 text-sm mt-0.5">
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-[#17181c] tracking-tight">
+            Catalog Uploads
+          </h1>
+          <p className="text-[#6c7080] text-sm mt-1">
             Create and manage your product listings
           </p>
         </div>
 
-        {/* Add Product — navigates to Phase 4 input capture screen */}
-        <button
+        {/* Refined Add Product CTA */}
+        <Link
           id="add-product-btn"
-          onClick={() => router.push("/dashboard/catalog/add")}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-all duration-150 shadow-lg shadow-indigo-600/25 hover:shadow-indigo-500/30 hover:-translate-y-0.5"
+          href="/dashboard/catalog/add"
+          className="inline-flex items-center justify-center gap-2 bg-[#e11b4c] hover:bg-[#c9143f] active:bg-[#b01037] text-white font-medium px-4 py-2.5 rounded-lg text-sm transition-all duration-150 shadow-sm hover:shadow active:scale-[0.99] self-start sm:self-auto shrink-0"
         >
-          <PlusCircle size={17} />
-          Add Product
-        </button>
+          <Plus size={16} strokeWidth={2.5} />
+          <span className="font-display font-semibold">Add Product</span>
+        </Link>
       </div>
 
-      {/* Sarthi AI live banner */}
-      <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
-        <span className="text-2xl mt-0.5">🎙️</span>
-        <div>
-          <p className="text-indigo-900 font-semibold text-sm">
-            Sarthi AI is live
-          </p>
-          <p className="text-indigo-600 text-sm mt-0.5">
-            Speak in Hindi or Hinglish, upload a photo, and get a complete listing in seconds.
-          </p>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard title="Listed Products" value={loading ? "..." : String(stats.total)} icon={Store} iconColor="text-indigo-600" />
-        <StatCard title="Live" value={loading ? "..." : String(stats.live)} subtitle="Visible to buyers" icon={CheckCircle2} iconColor="text-emerald-600" />
-        <StatCard title="Under Review" value={loading ? "..." : String(stats.underReview)} icon={Clock} iconColor="text-amber-600" />
-        <StatCard title="Drafts" value={loading ? "..." : String(stats.drafts)} subtitle="Incomplete" icon={FileText} iconColor="text-slate-500" />
-      </div>
-
-      {/* Recent listings table */}
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-700">Recent Listings</h2>
-        <span className="text-xs text-slate-400">
-          {loading ? "Loading..." : `Showing ${listings.length} of ${stats.total}`}
-        </span>
-      </div>
-
-      {loading ? (
-        <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-sm text-slate-400">
-          Loading listings...
-        </div>
-      ) : (
-        <DataTable<DisplayListing>
-          columns={[
-            { key: "id", header: "Listing ID", className: "font-mono text-xs font-medium text-slate-600" },
-            { key: "product", header: "Product", className: "font-medium text-slate-800" },
-            { key: "category", header: "Category" },
-            { key: "createdOn", header: "Created On" },
-            {
-              key: "status",
-              header: "Status",
-              render: (val) => (
-                <StatusBadge label={String(val)} variant={STATUS_MAP[String(val)] ?? "neutral"} />
-              ),
-            },
-          ]}
-          rows={listings}
+      {/* 2. Cohesive Statistics Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8 sm:mb-10">
+        <StatCard
+          title="Listed Products"
+          value={String(stats.total)}
+          icon={Store}
+          iconColor="text-[#e11b4c]"
+          iconBg="bg-[#fff0f3]"
         />
-      )}
+        <StatCard
+          title="Live"
+          value={String(stats.live)}
+          subtitle="Visible to buyers"
+          icon={CheckCircle2}
+          iconColor="text-emerald-600"
+          iconBg="bg-emerald-50"
+        />
+        <StatCard
+          title="Under Review"
+          value={String(stats.underReview)}
+          icon={Clock}
+          iconColor="text-amber-600"
+          iconBg="bg-amber-50"
+        />
+        <StatCard
+          title="Drafts"
+          value={String(stats.drafts)}
+          subtitle="Incomplete"
+          icon={FileText}
+          iconColor="text-[#8c8f9c]"
+          iconBg="bg-[#f4f4f7]"
+        />
+      </div>
+
+      {/* 3. Products Section */}
+      <section className="space-y-4 sm:space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-0.5">
+          <div>
+            <h2 className="font-display text-lg font-bold text-[#17181c] tracking-tight">
+              Your Products
+            </h2>
+            <p className="text-xs sm:text-sm text-[#6c7080] mt-0.5">
+              Manage your product listings
+            </p>
+          </div>
+          <span className="text-xs font-medium text-[#8c8f9c] self-start sm:self-auto mt-1 sm:mt-0">
+            {stats.total === 0
+              ? "0 products"
+              : `Showing ${listings.length} of ${stats.total} ${
+                  stats.total === 1 ? "product" : "products"
+                }`}
+          </span>
+        </div>
+
+        {fetchError ? (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-sm text-red-600">
+            <p className="font-semibold text-red-800">Failed to load listings</p>
+            <p className="mt-1">{fetchError}</p>
+          </div>
+        ) : (
+          <DataTable<DisplayListing>
+            columns={[
+              {
+                key: "id",
+                header: "Listing ID",
+                className: "font-mono text-xs font-medium text-[#6c7080]",
+              },
+              {
+                key: "product",
+                header: "Product",
+                className: "font-medium text-[#17181c]",
+              },
+              { key: "category", header: "Category" },
+              { key: "createdOn", header: "Created On" },
+              {
+                key: "status",
+                header: "Status",
+                render: (val) => (
+                  <StatusBadge
+                    label={String(val)}
+                    variant={STATUS_MAP[String(val)] ?? "neutral"}
+                  />
+                ),
+              },
+            ]}
+            rows={listings}
+            emptyMessage="No product listings found yet. Click 'Add Product' above to create your first listing."
+          />
+        )}
+      </section>
     </div>
   );
 }

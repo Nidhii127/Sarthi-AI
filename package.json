@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "test-brain": "tsx scripts/test-brain.ts",
     "seed-attributes": "tsx scripts/seed-attribute-schema.ts",
@@ -13,9 +13,9 @@
   "dependencies": {
     "@google/genai": "^2.10.0",
     "@pinecone-database/pinecone": "^8.0.0",
-    "@supabase/ssr": "^0.6.1",
-    "@supabase/supabase-js": "^2.50.0",
     "dotenv": "^17.4.2",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
     "langfuse": "^3.38.20",
     "lucide-react": "^0.525.0",
     "next": "16.2.9",

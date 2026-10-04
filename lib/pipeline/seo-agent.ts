@@ -184,11 +184,14 @@ export async function runSeoAgent(
 
     // Step 1: Tavily search
     let results: TavilyResult[] = [];
+    const _tTavily = Date.now();
     try {
       results = await tavilySearch(currentQuery);
       searchesUsed++;
+      console.log(`[timing]   seo-agent attempt ${attempt} Tavily: ${Date.now() - _tTavily}ms (${results.length} results)`);
     } catch (err) {
       const msg = (err as Error).message;
+      console.log(`[timing]   seo-agent attempt ${attempt} Tavily FAILED: ${Date.now() - _tTavily}ms`);
       console.warn(`[SeoAgent] Tavily search failed (attempt ${attempt}): ${msg}`);
       span?.end({ output: { error: msg, query: currentQuery } });
       // On network failure, break and return fallback
@@ -203,6 +206,7 @@ export async function runSeoAgent(
 
     // Step 2: Gemini judges whether signal is sufficient
     let judgment: JudgeResponse;
+    const _tJudge = Date.now();
     try {
       judgment = await judgeSignal(
         category,
@@ -211,8 +215,10 @@ export async function runSeoAgent(
         results,
         attempt
       );
+      console.log(`[timing]   seo-agent attempt ${attempt} judgeSignal: ${Date.now() - _tJudge}ms → sufficient=${judgment.sufficient}`);
     } catch (err) {
       const msg = (err as Error).message;
+      console.log(`[timing]   seo-agent attempt ${attempt} judgeSignal FAILED: ${Date.now() - _tJudge}ms`);
       console.warn(`[SeoAgent] Gemini judge failed (attempt ${attempt}): ${msg}`);
       span?.end({ output: { error: msg } });
       break;

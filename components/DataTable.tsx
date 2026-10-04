@@ -1,5 +1,8 @@
+import Link from "next/link";
+import { PackageSearch } from "lucide-react";
+
 /**
- * components/DataTable.tsx — Generic table for mock dashboard data
+ * components/DataTable.tsx — Generic table for dashboard data
  */
 
 export interface TableColumn<T> {
@@ -21,49 +24,68 @@ export default function DataTable<T extends Record<string, unknown>>({
   emptyMessage = "No data available",
 }: DataTableProps<T>) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl border border-[#e6e6ea] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/60">
+            <tr className="border-b border-[#e6e6ea] bg-[#fafafb]">
               {columns.map((col) => (
                 <th
                   key={String(col.key)}
-                  className={`px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap ${col.className ?? ""}`}
+                  className={`px-5 py-3 text-left text-[11px] font-bold text-[#6c7080] uppercase tracking-wider whitespace-nowrap ${col.className ?? ""}`}
                 >
                   {col.header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <tbody className="divide-y divide-[#f0f0f4]">
             {rows.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-4 py-10 text-center text-slate-400 text-sm"
+                  className="px-6 py-12 text-center text-[#8c8f9c] text-sm"
                 >
-                  {emptyMessage}
+                  <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                    <div className="w-10 h-10 rounded-full bg-[#f4f4f7] flex items-center justify-center text-[#8c8f9c] mb-2.5">
+                      <PackageSearch size={18} />
+                    </div>
+                    <p className="font-semibold text-[#17181c] text-sm mb-1">No product listings yet</p>
+                    <p className="text-xs text-[#8c8f9c]">{emptyMessage}</p>
+                  </div>
                 </td>
               </tr>
             ) : (
-              rows.map((row, i) => (
-                <tr
-                  key={i}
-                  className="hover:bg-slate-50/60 transition-colors"
-                >
-                  {columns.map((col) => (
-                    <td
-                      key={String(col.key)}
-                      className={`px-4 py-3.5 text-slate-700 whitespace-nowrap ${col.className ?? ""}`}
-                    >
-                      {col.render
+              rows.map((row, i) => {
+                const href = (row as Record<string, unknown>).href as string | undefined;
+                return (
+                  <tr
+                    key={i}
+                    className={`hover:bg-[#fbfbfd] transition-colors ${href ? "cursor-pointer group" : ""}`}
+                  >
+                    {columns.map((col) => {
+                      const content = col.render
                         ? col.render(row[col.key as keyof T], row)
-                        : String(row[col.key as keyof T] ?? "—")}
-                    </td>
-                  ))}
-                </tr>
-              ))
+                        : String(row[col.key as keyof T] ?? "—");
+
+                      return (
+                        <td
+                          key={String(col.key)}
+                          className={`px-5 py-3.5 text-[#17181c] whitespace-nowrap ${col.className ?? ""}`}
+                        >
+                          {href ? (
+                            <Link href={href} className="block w-full h-full text-inherit no-underline">
+                              {content}
+                            </Link>
+                          ) : (
+                            content
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

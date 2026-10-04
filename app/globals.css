@@ -1,25 +1,56 @@
 @import "tailwindcss";
 
 :root {
-  /* Brand color tokens */
-  --color-sidebar-bg: #0f172a;
-  --color-sidebar-hover: #1e293b;
-  --color-sidebar-active: #4f46e5;
-  --color-sidebar-text: #94a3b8;
-  --color-sidebar-text-active: #ffffff;
-  --color-brand: #4f46e5;
-  --color-brand-dark: #4338ca;
-  --color-content-bg: #f8fafc;
-  --color-card-bg: #ffffff;
-  --color-text-primary: #1e293b;
-  --color-text-secondary: #64748b;
-  --color-border: #e2e8f0;
+  /* ─── Saarthi Brand Design Tokens (Indian Commerce Aesthetic) ─── */
+  --color-brand: #e11b4c;
+  --color-brand-hover: #c9143f;
+  --color-brand-active: #b30f36;
+  --color-brand-light: #fff0f3;
+  --color-brand-border: #fecdd3;
+  --color-brand-text: #e11b4c;
 
-  /* Status colours */
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-  --color-info: #3b82f6;
+  /* Surfaces & Backgrounds */
+  --color-page-bg: #f5f5f7;
+  --color-card-bg: #ffffff;
+  --color-card-subtle: #fafafb;
+  --color-card-hover: #f1f2f5;
+
+  /* Typography */
+  --color-text-primary: #17181c;
+  --color-text-secondary: #585b66;
+  --color-text-muted: #8c8f9c;
+
+  /* Font families (populated by next/font CSS variables) */
+  --font-ui: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display-stack: var(--font-jakarta), var(--font-inter), -apple-system, sans-serif;
+  --font-hindi-stack: var(--font-devanagari), "Noto Sans Devanagari", sans-serif;
+
+  /* Crisp 1px Borders */
+  --color-border: #e6e6ea;
+  --color-border-subtle: #f0f0f4;
+  --color-border-strong: #d1d2d8;
+
+  /* Navigation Sidebar */
+  --color-sidebar-bg: #ffffff;
+  --color-sidebar-border: #e6e6ea;
+  --color-sidebar-text: #585b66;
+  --color-sidebar-text-active: #e11b4c;
+  --color-sidebar-active-bg: #fff0f3;
+  --color-sidebar-hover-bg: #f7f7f9;
+
+  /* Status Colors */
+  --color-success: #059669;
+  --color-success-bg: #ecfdf5;
+  --color-success-border: #a7f3d0;
+  --color-warning: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-warning-border: #fde68a;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-info: #2563eb;
+  --color-info-bg: #eff6ff;
+  --color-info-border: #bfdbfe;
 }
 
 * {
@@ -27,17 +58,35 @@
 }
 
 body {
-  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  /* Inter as default UI/body font; Noto Sans Devanagari as explicit Hindi fallback */
+  font-family: var(--font-inter), var(--font-devanagari), -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--color-text-primary);
-  background-color: var(--color-content-bg);
+  background-color: var(--color-page-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Smooth page transitions */
+/*
+  .font-display — apply to: brand name, page headings, section headings,
+  important metric numbers, primary CTA text.
+  Do NOT apply globally to h1/h2/h3/button.
+*/
+.font-display {
+  font-family: var(--font-jakarta), var(--font-devanagari), -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Hindi / Devanagari text wrapper */
+.font-hindi {
+  font-family: var(--font-devanagari), "Noto Sans Devanagari", sans-serif;
+}
+
+/* Page enter transition */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -46,37 +95,86 @@ body {
 }
 
 .page-enter {
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn 0.15s ease-out;
 }
 
-/* Custom scrollbar for sidebar */
+/* Minimal subtle scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 2px;
+  background: #d8d8de;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b5b5be;
 }
 
-/* Status badge utilities */
+/* Refined status badges */
 .badge {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.175rem 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  border-width: 1px;
 }
 .badge-success {
-  @apply bg-emerald-100 text-emerald-800;
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+  border-color: var(--color-success-border);
 }
 .badge-warning {
-  @apply bg-amber-100 text-amber-800;
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+  border-color: var(--color-warning-border);
 }
 .badge-danger {
-  @apply bg-red-100 text-red-800;
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: var(--color-danger-border);
 }
 .badge-info {
-  @apply bg-blue-100 text-blue-800;
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
+  border-color: var(--color-info-border);
 }
 .badge-neutral {
-  @apply bg-slate-100 text-slate-700;
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border-color: #e5e7eb;
+}
+
+/* Commerce button & input utility styles */
+.saarthi-btn-primary {
+  background-color: var(--color-brand);
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  transition: all 0.15s ease-in-out;
+}
+.saarthi-btn-primary:hover:not(:disabled) {
+  background-color: var(--color-brand-hover);
+}
+.saarthi-btn-primary:active:not(:disabled) {
+  background-color: var(--color-brand-active);
+}
+
+.saarthi-input {
+  border: 1px solid var(--color-border);
+  background-color: #ffffff;
+  border-radius: 0.5rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+.saarthi-input:focus {
+  outline: none;
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 2px rgba(225, 27, 76, 0.15);
 }

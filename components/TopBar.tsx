@@ -1,91 +1,54 @@
 /**
  * components/TopBar.tsx — Dashboard top navigation bar
  *
- * Displays seller name from Supabase session and a logout button.
+ * Displays seller identity and logout in a visually quiet user area,
+ * keeping the primary focus on the dashboard content.
  * This is a Server Component — fetches session server-side.
  */
 
-import { createClient } from "@/lib/supabase";
-import { signOutAction } from "@/app/(auth)/login/actions";
-import { Bell, LogOut, User } from "lucide-react";
+import { cookies } from "next/headers";
+import { adminAuth } from "@/lib/firebase-admin";
+import LogoutButton from "@/components/LogoutButton";
+import { User } from "lucide-react";
 
 export default async function TopBar() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("__session")?.value;
 
-  // Try to get name from profiles table, fall back to metadata, then email
   let displayName = "Seller";
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single();
+  let email = "Seller";
 
-    displayName =
-      profile?.full_name ||
-      user.user_metadata?.full_name ||
-      user.email ||
-      "Seller";
+  if (sessionCookie) {
+    try {
+      const decodedUser = await adminAuth.verifySessionCookie(sessionCookie, true);
+      displayName = decodedUser.name || decodedUser.email || "Seller";
+      email = decodedUser.email || "Seller";
+    } catch {
+      // Handled by DashboardLayout
+    }
   }
 
-  // Get first name only for the greeting
-  const firstName = displayName.split(" ")[0];
-
   return (
-    <header className="fixed top-0 right-0 left-60 h-16 bg-white border-b border-slate-100 z-30 flex items-center justify-between px-6">
-      {/* Greeting */}
-      <div>
-        <p className="text-slate-900 font-semibold text-sm">
-          Welcome back, {firstName} 👋
-        </p>
-        <p className="text-slate-400 text-xs mt-0.5">
-          {new Date().toLocaleDateString("en-IN", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
-        </p>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-2">
-        {/* Notification bell (decorative) */}
-        <button
-          className="relative flex items-center justify-center w-9 h-9 rounded-xl hover:bg-slate-100 transition-colors text-slate-500"
-          title="Notifications"
-        >
-          <Bell size={17} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-500 rounded-full ring-2 ring-white" />
-        </button>
-
-        {/* Seller avatar */}
-        <div className="flex items-center gap-2.5 pl-2 border-l border-slate-100 ml-1">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700">
-            <User size={16} />
+    <header className="fixed top-0 right-0 left-0 md:left-60 h-16 bg-white border-b border-[#e6e6ea] z-30 flex items-center justify-end px-6 sm:px-8">
+      {/* Right-side user area — visually quiet and refined */}
+      <div className="flex items-center gap-3">
+        {/* Seller avatar and info */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#f4f4f6] text-[#585b66] border border-[#e6e6ea]/60">
+            <User size={15} />
           </div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-semibold text-slate-900 leading-none">
+          <div className="hidden sm:block text-left">
+            <p className="text-xs font-semibold text-[#17181c] leading-none">
               {displayName}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">{user?.email ?? "Seller"}</p>
+            <p className="text-[11px] text-[#8c8f9c] mt-0.5 leading-none">{email}</p>
           </div>
         </div>
 
+        <div className="h-4 w-px bg-[#e6e6ea] hidden sm:block" />
+
         {/* Logout */}
-        <form action={signOutAction}>
-          <button
-            type="submit"
-            className="flex items-center gap-1.5 ml-2 px-3 py-2 text-xs font-medium text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-            title="Logout"
-          >
-            <LogOut size={14} />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
-        </form>
+        <LogoutButton />
       </div>
     </header>
   );

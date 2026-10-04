@@ -263,8 +263,8 @@ ${seoSection}
 6. Weight, GST%, HSN code -> primary source is seller text/voice (explicit only).
    - Weight: If weight_grams is not explicitly stated by the seller, use these category-specific defaults and mark weight_grams confidence as "medium" (reason: default category weight assigned, seller must confirm):
      T-shirt: 200 | Shirt: 250 | Pant / Trouser: 400 | Shorts: 200 | Leggings: 150 | Dress: 300 | Maxi Dress: 400 | Kurti / Kurta: 300 | Saree: 500
-   - GST: If seller_price is known, auto-calculate gst_percent: seller_price <= 2500 → gst_percent = 5, seller_price > 2500 → gst_percent = 18. Mark gst_percent confidence as "high" (reason: auto-derived from price). If seller_price is unknown, leave gst_percent as null and flag as "low" confidence.
-   - HSN: Always auto-fill hsn_code from category and mark as "high" confidence (reason: auto-derived from category):
+   - GST: If seller_price is known, auto-calculate gst_percent: seller_price <= 2500 → gst_percent = 5, seller_price > 2500 → gst_percent = 18. Mark gst_percent confidence as "medium" (reason: AI-calculated from price — seller should confirm). If seller_price is unknown, leave gst_percent as null and flag as "low" confidence.
+   - HSN: Always auto-fill hsn_code from category and mark as "medium" confidence (reason: AI-assigned from product category — seller should confirm before publishing):
      T-shirt: 6109 | Shirt (men): 6205 | Shirt (women): 6206 | Pant/Trouser (men): 6203 | Pant/Trouser (women): 6204 | Shorts: 6203 | Leggings: 6104 | Dress (woven): 6204 | Dress (knit): 6104 | Maxi Dress: 6204 | Kurti / Kurta: 6211 | Saree (cotton): 5208 | Saree (synthetic): 5407 (Note: Determine gender for Shirt and Pant/Trouser from image/text, default to men's; determine fabric for Saree, default to cotton if unclear).
 7. Stock qty, price, MRP → seller text/voice (explicit only). If not stated, set to null and flag as low confidence.
 
@@ -273,7 +273,8 @@ ${seoSection}
 - MEDIUM: One source available; the other structurally cannot verify it (e.g. image ↔ fabric).
 - LOW:    Sources disagree, OR a required field has no source at all.
 - HARD CAPS (never "high", no exceptions):
-    fabric, fabric_composition, wash_care, stock_qty, seller_price, mrp, weight_grams (gst_percent and hsn_code are exceptions and can be marked as "high" confidence when auto-derived as specified).
+    fabric, fabric_composition, wash_care, stock_qty, seller_price, mrp, weight_grams, gst_percent, hsn_code.
+    These fields are either unverifiable from the image or are AI-computed defaults — always cap at "medium" when auto-derived; only use "high" if the seller explicitly stated the exact value in their voice/text input.
 - LOW confidence: always include a seller_question in plain Hindi or English.
 
 === SIZE CHART RULES (AGENTS.md Section 5d) ===
@@ -306,10 +307,10 @@ Include entries for:
 - fabric: medium confidence (cannot be verified from image)
 - stock_qty: low confidence (unless specified by seller)
 - seller_price / mrp: low confidence (unless specified by seller)
-- weight_grams: medium confidence (if default category weight used) or high (if explicit weight provided)
+- weight_grams: medium confidence (if default category weight used) or high (if seller explicitly stated the weight in grams)
 - size_measurements: medium confidence (if default size chart used) or low (if no sizes/measurements could be determined)
-- gst_percent: high confidence (if derived from seller_price) or low (if seller_price unknown)
-- hsn_code: high confidence (always auto-filled)
+- gst_percent: medium confidence (if AI-calculated from seller_price using the 2500 rule) or low (if seller_price unknown)
+- hsn_code: medium confidence (always AI-assigned from category — seller should confirm)
 plus any attribute that could not be determined from image or text.
 
 === OUTPUT FORMAT ===
@@ -404,20 +405,36 @@ export async function runListingPipeline(params: {
       }
     : null;
 
+  const _pipelineStart = Date.now();
+
   try {
     // Step 1: Detect category
+    const _t1 = Date.now();
     const detectedCategory = await detectCategory(imagePart, audioPart, sellerText, trace);
+    console.log(`[timing] detectCategory: ${Date.now() - _t1}ms → ${detectedCategory ?? "null"}`);
 
-    // Step 2a: Fetch attribute schema (RAG #1)
+    // Step 2: Parallel RAG Retrieval (RAG #1: Attribute Schema + RAG #2: SEO Patterns)
     let retrievedSchema: RetrievedSchema | null = null;
-    if (detectedCategory) {
-      retrievedSchema = await fetchAttributeSchema(detectedCategory, trace);
-    }
+    let seoPatterns = "";
 
-    // Step 2b: Fetch SEO corpus patterns (RAG #2)
-    const seoPatterns = detectedCategory
-      ? await fetchSeoPatterns(detectedCategory, trace)
-      : "";
+    if (detectedCategory) {
+      const [schemaResult, seoResult] = await Promise.all([
+        (async () => {
+          const _t2a = Date.now();
+          const res = await fetchAttributeSchema(detectedCategory, trace);
+          console.log(`[timing] fetchAttributeSchema (RAG #1): ${Date.now() - _t2a}ms`);
+          return res;
+        })(),
+        (async () => {
+          const _t2b = Date.now();
+          const res = await fetchSeoPatterns(detectedCategory, trace);
+          console.log(`[timing] fetchSeoPatterns (RAG #2): ${Date.now() - _t2b}ms`);
+          return res;
+        })(),
+      ]);
+      retrievedSchema = schemaResult;
+      seoPatterns = seoResult;
+    }
 
     // Step 2c: Run SEO Research Agent (AGENTS.md §10a)
     // Pass any attributes we know at this point (category + detected schema group)
@@ -428,8 +445,9 @@ export async function runListingPipeline(params: {
       if (retrievedSchema?.attribute_group) {
         knownAttrs["attribute_group"] = retrievedSchema.attribute_group;
       }
+      const _t2c = Date.now();
       seoAgentResult = await runSeoAgent(detectedCategory, knownAttrs, seoPatterns, trace);
-      console.log(`[Pipeline] SEO agent used ${seoAgentResult.searches_used} Tavily search(es).`);
+      console.log(`[timing] runSeoAgent (${seoAgentResult.searches_used} search(es)): ${Date.now() - _t2c}ms`);
     }
 
     // Step 3: Generate listing fields
@@ -442,6 +460,7 @@ Follow all rules in the system prompt. Return the JSON object only.`;
     const generateSpan = trace ? trace.span({ name: "generate-listing-fields" }) : null;
 
     let res;
+    const _t3 = Date.now();
     try {
       res = await ai.models.generateContent({
         model: GEMINI_MODEL,
@@ -461,8 +480,10 @@ Follow all rules in the system prompt. Return the JSON object only.`;
           temperature: 0.1,
         },
       });
+      console.log(`[timing] generateContent (main): ${Date.now() - _t3}ms`);
       generateSpan?.end({ output: { success: true } });
     } catch (genErr) {
+      console.log(`[timing] generateContent (main) FAILED: ${Date.now() - _t3}ms`);
       generateSpan?.end({ output: { error: (genErr as Error).message } });
       throw genErr;
     }
@@ -493,6 +514,7 @@ ${validationErrorMsg}
 
 Please fix the errors above and generate the corrected JSON object matching the schema. Follow all rules.`;
 
+      const _t5 = Date.now();
       try {
         const retryRes = await ai.models.generateContent({
           model: GEMINI_MODEL,
@@ -512,6 +534,7 @@ Please fix the errors above and generate the corrected JSON object matching the 
             temperature: 0.1,
           },
         });
+        console.log(`[timing] generateContent (Zod retry): ${Date.now() - _t5}ms`);
 
         const retryRawText = (retryRes.text ?? "").trim();
         const retryCleaned = retryRawText
@@ -525,6 +548,7 @@ Please fix the errors above and generate the corrected JSON object matching the 
 
         retrySpan?.end({ output: { parsed, success: validationResult.success } });
       } catch (retryErr) {
+        console.log(`[timing] generateContent (Zod retry) FAILED: ${Date.now() - _t5}ms`);
         retrySpan?.end({ output: { error: (retryErr as Error).message } });
         throw new Error(`Gemini self-correction retry call failed: ${(retryErr as Error).message}`);
       }
@@ -539,11 +563,15 @@ Please fix the errors above and generate the corrected JSON object matching the 
     validationSpan?.end({ output: validationResult.data });
 
     // Flush Langfuse events before returning
+    const _t6 = Date.now();
     await langfuse?.shutdownAsync();
+    if (langfuse) console.log(`[timing] langfuse.shutdownAsync: ${Date.now() - _t6}ms`);
 
+    console.log(`[timing] runListingPipeline TOTAL: ${Date.now() - _pipelineStart}ms`);
     return validationResult.data;
   } catch (err) {
     await langfuse?.shutdownAsync();
+    console.log(`[timing] runListingPipeline TOTAL (error path): ${Date.now() - _pipelineStart}ms`);
     throw err;
   }
 }

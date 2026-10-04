@@ -43,6 +43,7 @@ import {
 // ─── LocalStorage key (shared with add/page.tsx) ──────────────────────────────
 
 const LS_KEY = "sarthi_pending_listing";
+const LS_DRAFT_KEY = "sarthi_pending_draft_id";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -349,10 +350,10 @@ function editedListingToFinal(
 
 function inputCls(isLowConfidence: boolean, extra = ""): string {
   const base =
-    "w-full text-sm text-slate-800 border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:border-transparent transition-all";
+    "w-full text-sm text-[#17181c] border rounded-md px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:border-[#e11b4c] transition-colors";
   const variant = isLowConfidence
     ? "border-red-300 bg-red-50/40 focus:ring-red-400 placeholder-red-300"
-    : "border-slate-200 bg-slate-50 hover:border-slate-300 focus:ring-indigo-400";
+    : "border-[#e6e6ea] bg-white hover:border-[#8c8f9c] focus:ring-[#e11b4c]";
   return [base, variant, extra].filter(Boolean).join(" ");
 }
 
@@ -365,7 +366,7 @@ function ConfidenceBadge({ flag, isFilled }: { flag: ConfidenceFlag | undefined;
     return (
       <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-0.5 text-xs font-medium flex-shrink-0">
         <AlertTriangle size={10} />
-        Please confirm / कृपया पुष्टि करें
+        AI Suggested / AI द्वारा सुझाया गया
       </span>
     );
   }
@@ -374,7 +375,7 @@ function ConfidenceBadge({ flag, isFilled }: { flag: ConfidenceFlag | undefined;
   return (
     <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 rounded-full px-2.5 py-0.5 text-xs font-medium flex-shrink-0">
       <AlertCircle size={10} />
-      Needs info / जानकारी चाहिए
+      Needs your input / आपकी जानकारी आवश्यक है
     </span>
   );
 }
@@ -391,7 +392,7 @@ function SellerQuestion({ flag, isFilled }: { flag: ConfidenceFlag | undefined; 
         {flag.seller_question}
       </p>
       <p className="text-xs text-red-500 mt-1">
-        Please fill this field to continue / इस फ़ील्ड को भरना ज़रूरी है
+        ⚠️ Needs your input / आपकी जानकारी आवश्यक है — this field is required before you can publish.
       </p>
     </div>
   );
@@ -413,7 +414,7 @@ function FieldRow({
       <div className="flex items-center gap-2 flex-wrap">
         <label
           htmlFor={`field-${fieldKey.replace(/\./g, "-")}`}
-          className="text-sm font-semibold text-slate-700"
+          className="text-sm font-semibold text-[#17181c]"
         >
           {bilingualLabel(fieldKey)}
         </label>
@@ -435,14 +436,14 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-50">
+    <section className="bg-white rounded-lg border border-[#e6e6ea] shadow-sm overflow-hidden">
+      <div className="px-5 py-3.5 border-b border-[#e6e6ea]">
         <div className="flex items-center gap-2">
-          <Icon size={16} className="text-indigo-500" />
-          <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
+          <Icon size={16} className="text-[#e11b4c]" />
+          <h2 className="font-display text-sm font-semibold text-[#17181c]">{title}</h2>
         </div>
       </div>
-      <div className="p-6 space-y-5">{children}</div>
+      <div className="p-5 space-y-5">{children}</div>
     </section>
   );
 }
@@ -463,6 +464,8 @@ export default function ConfirmPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [hasCalculatedMRP, setHasCalculatedMRP] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   // ── Read listing from localStorage on mount ──
   useEffect(() => {
@@ -472,7 +475,29 @@ export default function ConfirmPage() {
         setNotFound(true);
         return;
       }
+      // Read draftId (stored separately by add/page.tsx)
+      const storedDraftId = localStorage.getItem(LS_DRAFT_KEY);
+      if (storedDraftId) setDraftId(storedDraftId);
+
+      // Read image URL from parsed listing payload or localStorage keys
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const possibleImage =
+        localStorage.getItem("sarthi_pending_image") ||
+        localStorage.getItem("sarthi_pending_photo") ||
+        localStorage.getItem("sarthi_pending_image_url");
+
+      if (possibleImage && typeof possibleImage === "string") {
+        setImageUrl(possibleImage);
+      }
+
       const parsed = JSON.parse(raw) as Listing;
+
+      // Also check image on parsed listing object if present
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const parsedImage = (parsed as any)?.imageUrl || (parsed as any)?.image || (parsed as any)?.photoUrl;
+      if (parsedImage && typeof parsedImage === "string") {
+        setImageUrl(parsedImage);
+      }
 
       // Basic sanity check — must at least have a category
       if (!parsed?.category) {
@@ -619,8 +644,8 @@ export default function ConfirmPage() {
       const val = f.field.includes("size_measurements") || f.field.includes("size_chart")
         ? "[size chart values]"
         : f.field.includes("stock_qty")
-        ? "[variant stock values]"
-        : getEditedValue(f.field, form) ?? getEditedValue(`pricing_inputs.${f.field}`, form) ?? getEditedValue(`attributes.${f.field}`, form) ?? "undefined";
+          ? "[variant stock values]"
+          : getEditedValue(f.field, form) ?? getEditedValue(`pricing_inputs.${f.field}`, form) ?? getEditedValue(`attributes.${f.field}`, form) ?? "undefined";
       console.log(`Field: "${f.field}", Value: "${val}", IsFilled: ${isFilled}`);
       return isFilled;
     });
@@ -644,7 +669,7 @@ export default function ConfirmPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(final),
+        body: JSON.stringify({ listing: final, draftId }),
       });
 
       const data = await response.json();
@@ -655,6 +680,7 @@ export default function ConfirmPage() {
 
       setSaveSuccess(true);
       localStorage.removeItem(LS_KEY);
+      localStorage.removeItem(LS_DRAFT_KEY);
 
       setTimeout(() => {
         router.push("/dashboard/catalog");
@@ -682,9 +708,9 @@ export default function ConfirmPage() {
   ) {
     setForm((prev) => {
       if (!prev) return prev;
-      
+
       const newPricing = { ...prev.pricing_inputs, [key]: value };
-      
+
       if (key === "seller_price") {
         const priceNum = parseFloat(value);
         if (isNaN(priceNum) || value.trim() === "") {
@@ -694,7 +720,7 @@ export default function ConfirmPage() {
           newPricing.mrp = String(suggestedMrp);
         }
       }
-      
+
       return { ...prev, pricing_inputs: newPricing };
     });
   }
@@ -731,9 +757,9 @@ export default function ConfirmPage() {
         size_chart: prev.size_chart.map((row, i) =>
           i === rowIdx
             ? {
-                ...row,
-                measurements_cm: { ...row.measurements_cm, [measureKey]: value },
-              }
+              ...row,
+              measurements_cm: { ...row.measurements_cm, [measureKey]: value },
+            }
             : row
         ),
       };
@@ -760,9 +786,9 @@ export default function ConfirmPage() {
     setForm((prev) =>
       prev
         ? {
-            ...prev,
-            variants: [...prev.variants, { size: "", color: "", stock_qty: "" }],
-          }
+          ...prev,
+          variants: [...prev.variants, { size: "", color: "", stock_qty: "" }],
+        }
         : prev
     );
   }
@@ -804,31 +830,28 @@ export default function ConfirmPage() {
       <div className="flex items-center gap-3 mb-2">
         <button
           onClick={() => router.push("/dashboard/catalog/add")}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors font-medium group"
+          className="flex items-center gap-1.5 text-sm text-[#585b66] hover:text-[#17181c] transition-colors font-medium group"
           id="back-to-add-btn"
         >
-          <ArrowLeft
-            size={16}
-            className="group-hover:-translate-x-0.5 transition-transform"
-          />
+          <ArrowLeft size={16} />
           Back
         </button>
-        <span className="text-slate-300">/</span>
-        <h1 className="text-xl font-bold text-slate-900">
+        <span className="text-[#8c8f9c]">/</span>
+        <h1 className="font-display text-xl font-bold text-[#17181c]">
           Review Listing / लिस्टिंग की जाँच करें
         </h1>
       </div>
 
-      <p className="text-slate-500 text-sm mb-1">
+      <p className="text-[#585b66] text-sm mb-1">
         Review and edit the generated fields before publishing your product.
       </p>
-      <p className="text-slate-400 text-sm mb-6">
+      <p className="text-[#8c8f9c] text-sm mb-6">
         नीचे दी गई जानकारी जाँचें और ज़रूरी बदलाव करें, फिर सबमिट करें।
       </p>
 
       {/* ── Error & Success Banners ── */}
       {saveSuccess && (
-        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-sm flex items-start gap-2.5 animate-fadeIn">
+        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-sm flex items-start gap-2.5 animate-fadeIn">
           <CheckCircle2 className="text-emerald-500 flex-shrink-0 mt-0.5" size={18} />
           <div>
             <p className="font-semibold text-emerald-900">Listing saved successfully! Redirecting...</p>
@@ -838,7 +861,7 @@ export default function ConfirmPage() {
       )}
 
       {saveError && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-2xl text-sm flex items-start gap-2.5 animate-fadeIn">
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm flex items-start gap-2.5 animate-fadeIn">
           <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
           <div>
             <p className="font-semibold text-red-900">Failed to save listing / लिस्टिंग सहेजने में विफल</p>
@@ -848,21 +871,47 @@ export default function ConfirmPage() {
       )}
 
       {/* ── Confidence legend ── */}
-      <div className="flex flex-wrap items-center gap-3 mb-6 px-4 py-3 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-        <span className="text-slate-500 font-semibold">Confidence:</span>
-        <span className="inline-flex items-center gap-1.5 text-slate-600">
+      <div className="flex flex-wrap items-center gap-3 mb-6 px-4 py-3 bg-[#fafafb] rounded-md border border-[#e6e6ea] text-xs">
+        <span className="text-[#585b66] font-semibold">Legend / संकेत:</span>
+        <span className="inline-flex items-center gap-1.5 text-[#585b66]">
           <CheckCircle2 size={12} className="text-emerald-500" />
-          High — AI is confident, just review
+          Verified — ready to publish
         </span>
         <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5 font-medium">
           <AlertTriangle size={10} />
-          Medium — please confirm
+          AI Suggested / AI द्वारा सुझाया गया — review &amp; edit if needed
         </span>
         <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 rounded-full px-2 py-0.5 font-medium">
           <AlertCircle size={10} />
-          Low — answer required to submit
+          Needs your input / आपकी जानकारी आवश्यक है — required to publish
         </span>
       </div>
+
+      {/* ── Product Photo Preview (if available) ── */}
+      {imageUrl && (
+        <div className="mb-6 bg-white rounded-lg border border-[#e6e6ea] p-4 shadow-sm flex items-center gap-4">
+          <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 rounded-md overflow-hidden border border-[#e6e6ea] bg-[#fafafb]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl}
+              alt="Uploaded product photo"
+              className="w-full h-full object-cover"
+              onError={() => setImageUrl(null)}
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-xs font-semibold text-[#e11b4c] bg-[#fff0f3] border border-[#fecdd3] px-2.5 py-0.5 rounded-md inline-block mb-1">
+              Product Photo / प्रोडक्ट फोटो
+            </span>
+            <p className="text-sm font-semibold text-[#17181c] truncate">
+              {form.title || form.category || "Uploaded Item"}
+            </p>
+            <p className="text-xs text-[#8c8f9c] mt-0.5">
+              Review attributes against this photo / इस फोटो के आधार पर जानकारी जाँचें
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6">
 
@@ -910,7 +959,7 @@ export default function ConfirmPage() {
               placeholder="Product listing title"
               maxLength={150}
             />
-            <p className="text-xs text-slate-400 pl-1">
+            <p className="text-xs text-[#8c8f9c] pl-1">
               {form.title.length}/150 characters
             </p>
           </FieldRow>
@@ -960,20 +1009,28 @@ export default function ConfirmPage() {
         ════════════════════════════════════════════════════════════════════ */}
         {form.size_chart.length > 0 && (
           <SectionCard icon={BarChart2} title="Size Chart / साइज़ चार्ट">
-            <p className="text-xs text-slate-400 -mt-2">
+            {/* Show AI-suggested notice when the size chart was auto-filled as a standard default */}
+            {(cfFlag("size_measurements") ?? cfFlag("size_chart"))?.confidence === "medium" && (
+              <p className="-mt-2 mb-1 inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-3 py-1 text-xs font-medium">
+                <AlertTriangle size={10} />
+                AI Suggested / AI द्वारा सुझाया गया — standard size defaults used. Edit measurements to match your actual product.
+                &nbsp;/&nbsp; कृपया अपने उत्पाद के अनुसार माप जाँचें।
+              </p>
+            )}
+            <p className="text-xs text-[#8c8f9c] -mt-2">
               Measurements in inches (cm in brackets) / माप इंच में हैं (cm कोष्ठक में)
             </p>
-            <div className="overflow-x-auto rounded-xl border border-slate-100">
+            <div className="overflow-x-auto rounded-md border border-[#e6e6ea]">
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 w-24">
+                  <tr className="bg-[#fafafb] border-b border-[#e6e6ea]">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-[#585b66] w-24">
                       Size / साइज़
                     </th>
                     {measureKeys.map((mk) => (
                       <th
                         key={mk}
-                        className="text-left px-4 py-3 text-xs font-semibold text-slate-600"
+                        className="text-left px-4 py-3 text-xs font-semibold text-[#585b66]"
                       >
                         {toTitleCase(mk)}
                       </th>
@@ -984,7 +1041,7 @@ export default function ConfirmPage() {
                   {form.size_chart.map((row, rowIdx) => (
                     <tr
                       key={rowIdx}
-                      className="border-b border-slate-50 last:border-0 hover:bg-slate-50/40 transition-colors"
+                      className="border-b border-[#f0f0f4] last:border-0 hover:bg-[#f8f8fa] transition-colors"
                     >
                       {/* Size label cell */}
                       <td className="px-3 py-2">
@@ -995,7 +1052,7 @@ export default function ConfirmPage() {
                           onChange={(e) =>
                             setSizeChartRowSize(rowIdx, e.target.value)
                           }
-                          className="w-full text-sm text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-center font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all"
+                          className="w-full text-sm text-[#17181c] bg-white border border-[#e6e6ea] rounded-md px-3 py-1.5 text-center font-semibold focus:outline-none focus:ring-1 focus:ring-[#e11b4c] focus:border-[#e11b4c] transition-colors"
                         />
                       </td>
                       {/* Measurement cells (dynamic columns) */}
@@ -1008,7 +1065,7 @@ export default function ConfirmPage() {
                             onChange={(e) =>
                               setSizeChartCell(rowIdx, mk, e.target.value)
                             }
-                            className="w-full text-sm text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-center focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all font-medium"
+                            className="w-full text-sm text-[#17181c] bg-white border border-[#e6e6ea] rounded-md px-3 py-1.5 text-center focus:outline-none focus:ring-1 focus:ring-[#e11b4c] focus:border-[#e11b4c] transition-colors font-medium"
                             placeholder='e.g. 34" (86cm)'
                           />
                         </td>
@@ -1029,13 +1086,13 @@ export default function ConfirmPage() {
             {/* Column headers — shown only once above first row */}
             {form.variants.length > 0 && (
               <div className="grid grid-cols-[1fr_1fr_120px_36px] gap-3 items-end">
-                <p className="text-xs font-semibold text-slate-500 pl-1">
+                <p className="text-xs font-semibold text-[#585b66] pl-1">
                   Size / साइज़
                 </p>
-                <p className="text-xs font-semibold text-slate-500 pl-1">
+                <p className="text-xs font-semibold text-[#585b66] pl-1">
                   Color / रंग
                 </p>
-                <p className="text-xs font-semibold text-slate-500 pl-1">
+                <p className="text-xs font-semibold text-[#585b66] pl-1">
                   Stock Qty / स्टॉक{" "}
                   <span className="text-red-400 font-bold">*</span>
                 </p>
@@ -1080,7 +1137,7 @@ export default function ConfirmPage() {
                 />
                 <button
                   onClick={() => removeVariant(vIdx)}
-                  className="flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                  className="flex items-center justify-center w-8 h-8 rounded-md text-[#8c8f9c] hover:text-red-600 hover:bg-red-50 transition-colors flex-shrink-0"
                   aria-label={`Remove variant ${vIdx + 1}`}
                   id={`remove-variant-${vIdx}-btn`}
                 >
@@ -1090,7 +1147,7 @@ export default function ConfirmPage() {
             ))}
 
             {form.variants.length === 0 && (
-              <p className="text-xs text-slate-400 text-center py-4">
+              <p className="text-xs text-[#8c8f9c] text-center py-4">
                 No variants yet — add one below / अभी कोई वेरिएंट नहीं है
               </p>
             )}
@@ -1098,7 +1155,7 @@ export default function ConfirmPage() {
             <button
               onClick={addVariant}
               id="add-variant-btn"
-              className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-500 font-medium transition-colors"
+              className="flex items-center gap-1.5 text-sm text-[#e11b4c] hover:text-[#c9143f] font-medium transition-colors"
             >
               <Plus size={15} />
               Add variant / वेरिएंट जोड़ें
@@ -1110,10 +1167,10 @@ export default function ConfirmPage() {
             SECTION 5 — Pricing
         ════════════════════════════════════════════════════════════════════ */}
         <SectionCard icon={IndianRupee} title="Pricing / मूल्य निर्धारण">
-          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 -mt-1">
-            ⚠️ Per AGENTS.md §8, pricing fields are always <strong>medium confidence</strong> — 
-            the AI cannot verify your stated price from the image. Please confirm all values.
-            &nbsp;/&nbsp; कीमत सम्बन्धी सभी जानकारी कृपया पुष्टि करें।
+          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 -mt-1">
+            ⚠️ Please verify your price, MRP, and weight — these values cannot be verified from the photo.
+            <br />
+            कृपया अपनी कीमत, एमआरपी और वजन की पुष्टि करें।
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -1125,7 +1182,7 @@ export default function ConfirmPage() {
               isFilled={isFieldFilled("seller_price", form)}
             >
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-semibold pointer-events-none">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#585b66] text-sm font-semibold pointer-events-none">
                   ₹
                 </span>
                 <input
@@ -1148,7 +1205,7 @@ export default function ConfirmPage() {
               isFilled={isFieldFilled("mrp", form)}
             >
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-semibold pointer-events-none">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#585b66] text-sm font-semibold pointer-events-none">
                   ₹
                 </span>
                 <input
@@ -1165,11 +1222,11 @@ export default function ConfirmPage() {
               {form.pricing_inputs.seller_price && (
                 <div className="mt-1.5 space-y-1">
                   {form.pricing_inputs.mrp && parseFloat(form.pricing_inputs.mrp) < parseFloat(form.pricing_inputs.seller_price) ? (
-                    <p className="text-xs text-red-500 font-medium" id="mrp-warning">
+                    <p className="text-xs text-red-600 font-medium" id="mrp-warning">
                       ⚠️ MRP विक्रेता मूल्य से कम नहीं हो सकता / MRP cannot be less than seller price
                     </p>
                   ) : (
-                    <p className="text-xs text-indigo-500 font-medium" id="mrp-suggestion-hint">
+                    <p className="text-xs text-[#585b66] font-medium" id="mrp-suggestion-hint">
                       Suggested MRP (40% above your price) — aap badal sakte hain / you can edit this
                     </p>
                   )}
@@ -1211,7 +1268,7 @@ export default function ConfirmPage() {
                 max={100}
                 step={1}
               />
-              <p className="text-xs text-slate-400 pl-1">
+              <p className="text-xs text-[#8c8f9c] pl-1">
                 5% if price ≤ ₹2,500 · 18% if price &gt; ₹2,500 (per AGENTS.md §5b)
               </p>
             </FieldRow>
@@ -1241,7 +1298,7 @@ export default function ConfirmPage() {
         ════════════════════════════════════════════════════════════════════ */}
         {originalListing.title_seo_keywords.length > 0 && (
           <SectionCard icon={Search} title="SEO Keywords / एसईओ कीवर्ड">
-            <p className="text-xs text-slate-400 -mt-2">
+            <p className="text-xs text-[#8c8f9c] -mt-2">
               Generated by AI for title/description optimisation — read-only &amp; informational.
               &nbsp;/&nbsp; AI द्वारा शीर्षक अनुकूलन के लिए तैयार किए गए — केवल देखने के लिए।
             </p>
@@ -1249,7 +1306,7 @@ export default function ConfirmPage() {
               {originalListing.title_seo_keywords.map((kw, i) => (
                 <span
                   key={i}
-                  className="bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full px-3 py-1 text-xs font-medium"
+                  className="bg-[#fff0f3] text-[#e11b4c] border border-[#fecdd3] rounded-md px-2.5 py-1 text-xs font-medium"
                 >
                   {kw}
                 </span>
@@ -1264,7 +1321,7 @@ export default function ConfirmPage() {
         <div className="pb-10">
           {/* Hint when blocked */}
           {!submitEnabled && (
-            <p className="text-center text-xs text-red-500 font-medium mb-3">
+            <p className="text-center text-xs text-red-600 font-medium mb-3">
               Fill all required fields (marked red ↑) to continue&nbsp;/&nbsp;
               सभी ज़रूरी फ़ील्ड भरें
             </p>
@@ -1274,7 +1331,7 @@ export default function ConfirmPage() {
             id="submit-listing-btn"
             onClick={handleSubmit}
             disabled={!submitEnabled}
-            className="w-full flex items-center justify-center gap-2.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed disabled:shadow-none text-white font-bold py-4 rounded-2xl text-base transition-all duration-150 shadow-xl shadow-indigo-600/25 hover:shadow-indigo-500/30 hover:-translate-y-0.5 disabled:translate-y-0"
+            className="w-full flex items-center justify-center gap-2.5 bg-[#e11b4c] hover:bg-[#c9143f] active:bg-[#b01037] disabled:bg-[#f0f0f4] disabled:text-[#8c8f9c] disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-lg text-base transition-colors shadow-sm"
           >
             {isSaving ? (
               <span className="flex items-center gap-2">
@@ -1284,12 +1341,13 @@ export default function ConfirmPage() {
             ) : (
               <>
                 <Send size={18} />
-                List Product / उत्पाद सूचीबद्ध करें
+                <span className="font-display">List Product</span>
+                <span> / उत्पाद सूचीबद्ध करें</span>
               </>
             )}
           </button>
 
-          <p className="text-center text-xs text-slate-400 mt-3">
+          <p className="text-center text-xs text-[#8c8f9c] mt-3">
             Your listing will be saved after confirmation&nbsp;·&nbsp;
             पुष्टि के बाद आपकी लिस्टिंग सेव होगी
           </p>
